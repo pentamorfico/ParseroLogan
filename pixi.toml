@@ -1,0 +1,22 @@
+[project]
+name = "parserologan"
+channels = ["conda-forge", "bioconda"]          # Use conda-forge channel
+platforms = ["linux-64", "osx-arm64", "osx-64"]
+
+[dependencies]
+python = ">=3.9"
+
+# Python dependencies from PyPI (these will come from PyPI by default)
+numpy = "*"
+pandas = "*"
+biopython = "*"
+pyhmmer = "*"
+pyrodigal-gv = "*"
+textual = "*"
+rich-click = "*"
+click = "*"
+
+# Non-Python dependencies available on conda-forge:
+[tool.pixi.dependencies]
+seqkit = "*"
+awscli = "*"

@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "parserologan"
+version = "0.1.0"
+description = "A parser and annotation tool for SRAs"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [
+  { name = "Your Name", email = "you@example.com" }
+]
+requires-python = ">=3.8"
+
+# Adjust your dependencies accordingly:
+# These are examples from the previous script.
+dependencies = [
+  "click",
+  "biopython",
+  "pyhmmer",
+  "pyrodigal-gv",
+  "textual",
+  "rich-click",
+  "awscli"
+]
+
+[project.scripts]
+parserologan = "parserologan.main:main"
