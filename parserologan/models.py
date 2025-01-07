@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Set, Optional
 from Bio.SeqRecord import SeqRecord
 
+
 @dataclass
 class ProcessedSRA:
     sra_id: str

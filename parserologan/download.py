@@ -9,6 +9,7 @@ from .hmm_search import search_hmm_streaming
 from .output import save_results
 from .fasta import count_fasta_contigs
 
+
 def get_s3_object_size(sra_id: str) -> str:
     bucket = "logan-pub"
     key = f"c/{sra_id}/{sra_id}.contigs.fa.zst"
@@ -31,7 +32,8 @@ def get_s3_object_size(sra_id: str) -> str:
     except Exception:
         return "?"
 
-def download_sra_to_variable(sra_id: str, updates: dict, done_event: threading.Event, hmm_file: Path, min_length: int, evalue: float, output_dir: Path, fix_circles_flag: bool = False):
+
+def download_sra_to_variable(sra_id: str, updates: dict, done_event: threading.Event, hmm_file: Path, min_length: int, evalue: float, output_dir: Path, fix_circles_flag: bool = False, save_all: bool = False):
     total_size = get_s3_object_size(sra_id)
     updates[sra_id] = {
         "name": sra_id,
@@ -76,7 +78,7 @@ def download_sra_to_variable(sra_id: str, updates: dict, done_event: threading.E
 
     try:
         all_contigs, all_annotations, all_proteins, hmmer_sequences = process_annotations(
-            updates[sra_id]["data"], min_length, fix_circles_flag=fix_circles_flag
+            updates[sra_id]["data"], min_length, sra_id, fix_circles_flag=fix_circles_flag
         )
     except Exception:
         import traceback
@@ -90,7 +92,7 @@ def download_sra_to_variable(sra_id: str, updates: dict, done_event: threading.E
     updates[sra_id]["status"] = "HMM Searching..."
 
     try:
-        matching_contigs, matching_proteins = search_hmm_streaming(hmmer_sequences, str(hmm_file), evalue)
+        all_hmm_results = search_hmm_streaming(hmmer_sequences, str(hmm_file), evalue)
     except Exception:
         import traceback
         traceback.print_exc()
@@ -98,22 +100,38 @@ def download_sra_to_variable(sra_id: str, updates: dict, done_event: threading.E
         done_event.set()
         return
 
-    num_hits = len(matching_contigs) if matching_contigs else 0
+    total_hits_for_display = 0
+    for hmm_name, (matching_contigs, matching_proteins) in all_hmm_results.items():
+        total_hits_for_display += len(matching_contigs)
 
     updates[sra_id]["searched_symbol"] = "[green]✓[/green]"
-    updates[sra_id]["num_hits"] = num_hits
+    updates[sra_id]["num_hits"] = total_hits_for_display
     updates[sra_id]["status"] = "Finished"
-
+    
     result = ProcessedSRA(
         sra_id=sra_id,
         all_contigs=all_contigs,
         all_gff=all_annotations,
         all_proteins=all_proteins,
-        matching_contigs=matching_contigs,
-        matching_proteins=matching_proteins
+        matching_contigs=set(),
+        matching_proteins=set()
     )
-    save_results(result, output_dir=output_dir, save_all=False)
+    
+    for hmm_name, (matching_contigs, matching_proteins) in all_hmm_results.items():
+        partial_result = ProcessedSRA(
+            sra_id=sra_id,
+            all_contigs=all_contigs,
+            all_gff=all_annotations,
+            all_proteins=all_proteins,
+            matching_contigs=matching_contigs,
+            matching_proteins=matching_proteins
+        )
+        save_results(
+            partial_result,
+            output_dir=output_dir,
+            hmm_name=hmm_name,
+            save_all=save_all
+        )
 
-    del all_contigs, all_annotations, all_proteins, hmmer_sequences, matching_contigs, matching_proteins, result
-
+    del all_contigs, all_annotations, all_proteins, hmmer_sequences, result, all_hmm_results
     done_event.set()

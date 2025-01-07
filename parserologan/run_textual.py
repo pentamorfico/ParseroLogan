@@ -12,7 +12,7 @@ from .download import download_sra_to_variable
 def display_value(val):
     return str(val) if val is not None else ""
 
-def run_with_textual_interface(sra_ids, threads, hmm_file, min_length, evalue, output_dir, fix_circles):
+def run_with_textual_interface(sra_ids, threads, hmm_file, min_length, evalue, output_dir, fix_circles,save_all=False):
     class LoganParsero(App):
         CSS = """
         Screen {
@@ -37,6 +37,7 @@ def run_with_textual_interface(sra_ids, threads, hmm_file, min_length, evalue, o
             self.evalue = evalue
             self.output_dir = output_dir
             self.fix_circles = fix_circles
+            self.save_all = save_all
             self._stdout_buffer = StringIO()
 
         def compose(self) -> ComposeResult:
@@ -75,7 +76,8 @@ def run_with_textual_interface(sra_ids, threads, hmm_file, min_length, evalue, o
                     self.min_length,
                     self.evalue,
                     self.output_dir,
-                    self.fix_circles
+                    self.fix_circles,
+                    self.save_all
                 )
 
             self.set_interval(0.5, self.refresh_table)

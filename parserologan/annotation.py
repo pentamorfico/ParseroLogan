@@ -6,6 +6,7 @@ import pyhmmer
 
 from .fasta import stream_fasta_from_memory
 
+
 def has_dtr(seq_record: SeqRecord, min_length: int = 30):
     substring = str(seq_record.seq).lower()[:min_length]
     pos = str(seq_record.seq).lower().rfind(substring)
@@ -13,6 +14,7 @@ def has_dtr(seq_record: SeqRecord, min_length: int = 30):
         return False, 0
     substring = str(seq_record.seq).lower()[pos:]
     return str(seq_record.seq).lower()[: len(substring)] == substring, len(substring)
+
 
 def fix_circle(seq_record: SeqRecord, k: int = 31):
     seq = str(seq_record.seq)
@@ -24,6 +26,7 @@ def fix_circle(seq_record: SeqRecord, k: int = 31):
             return SeqRecord(Seq(new_seq), id=seq_record.id, description=seq_record.description)
         kmers.add(kmer)
     return seq_record
+
 
 def process_contig(seq_record: SeqRecord) -> Tuple[List[Dict], List[SeqRecord], List[pyhmmer.easel.TextSequence]]:
     annotations = []
@@ -65,13 +68,14 @@ def process_contig(seq_record: SeqRecord) -> Tuple[List[Dict], List[SeqRecord], 
 
     return annotations, proteins, hmmer_sequences
 
-def process_annotations(data: bytes, min_length: int, fix_circles_flag: bool = False):
+
+def process_annotations(data: bytes, min_length: int, sra_id: str, fix_circles_flag: bool = False):
     all_contigs = {}
     all_annotations = []
     all_proteins = []
     all_hmmer_sequences = []
 
-    for contig in stream_fasta_from_memory(data, min_length):
+    for contig in stream_fasta_from_memory(data, min_length, sra_id):
         dtr_check, _ = has_dtr(contig)
         if fix_circles_flag and dtr_check:
             contig = fix_circle(contig)
