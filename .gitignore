@@ -1,3 +1,4 @@
 parserologan.egg-info/
 build/
 parserologan/__pycache__/
+.pixi/
