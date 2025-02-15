@@ -2,6 +2,17 @@
 
 ParseroLogan is a tool that downloads, annotates, and performs HMM-based searches on SRA contigs coming from the [Logan database](https://github.com/IndexThePlanet/Logan) . It uses `pyrodigal-gv` for ORF finding, `pyhmmer` for HMM searching, and `textual` for a UI-based progress table. It can optionally log progress to a file for use on HPC systems where interactive UIs may not be practical.
 
+The inputs are:
+
+* A text file containing a list of SRA accession numbers, one per line. 
+* A HMMER3 HMM profile (multi-HMM files supported)
+
+The output is:
+
+* One folder per HMM profile
+* Inside each HMM profile folder, one folder per SRA ID.
+    * Each SRA folder contains the GFF, FNA and FAA files plus a list of the hits to the HMM profile
+
 ## Features
 
 - Download contigs from S3.
