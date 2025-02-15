@@ -32,8 +32,7 @@ def download_sra_to_variable(sra_id: str, updates: dict, done_event, hmm_file: P
         "num_hits": None
     })
     bucket_key = f"s3://logan-pub/c/{sra_id}/{sra_id}.contigs.fa.zst"
-    cmd = f"cat /clusterfs/jgi/scratch/science/mds/pentamorfico/logan_search/ParseroLogan/test.fa | seqkit seq -m {min_length}"
-    #cmd = f"aws s3 cp {bucket_key} - --no-sign-request --no-progress | seqkit seq -m {min_length}"
+    cmd = f"aws s3 cp {bucket_key} - --no-sign-request --no-progress | seqkit seq -m {min_length}"
     process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     try:
