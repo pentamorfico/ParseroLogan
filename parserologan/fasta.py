@@ -1,3 +1,4 @@
+# fasta.py
 from io import BytesIO, TextIOWrapper
 from typing import Iterator
 from Bio.Seq import Seq

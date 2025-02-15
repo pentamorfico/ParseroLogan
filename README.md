@@ -15,10 +15,21 @@ You can install ParseroLogan using [pixi](https://github.com/jdevlieghere/pixi) 
 
 ```bash
 # Using pixi
-pixi install .
-    ```
+git clone https://github.com/pentamorfico/ParseroLogan.git
+cd ParseroLogan
+pixi install 
+pixi run pip install 
+```
 
-Or, if you prefer a standard Python install (e.g. in a virtual environment):
+Or, if you prefer a standard Python install (e.g. in a virtual environment). You will need to have these dependencies installed:
+
+  * click
+  * biopython
+  * pyhmmer
+  * pyrodigal-gv
+  * textual
+  * rich-click
+  * awscli
 
 ```bash
 pip install .
@@ -33,16 +44,26 @@ parserologan INPUT_FILE HMM_FILE [OPTIONS]
 ## Options
 
 ```bash
---threads: Number of parallel downloads (default: number of CPU cores)
---min_length: Minimum contig length (default: 1000)
---evalue: E-value threshold for HMM hits (default: 1e-5)
---output_dir: Directory to store results (default: parsero_logan)
---fix_circles: Fix circular concatemers for sequences with DTRs (default: False)
---log_file: Specify a path to a file to log progress instead of the textual UI (default: None)
+Options:
+
+  --threads INTEGER     Number of parallel downloads
+  --min_length INTEGER  Minimum contig length to consider
+  --evalue FLOAT        E-value threshold for HMM hits
+  --output_dir PATH     Output directory for results
+  --save_all            Save all results (fna, faa, gff) even if no HMM hits
+                        were found
 ```
 
 ## Example
 
+With pixi:
+
 ```bash
-parserologan sra_ids.txt profile.hmm --threads 4 --log_file progress.log
+pixi run parserologan sra_ids.txt profile.hmm --log_file test.txt
+```
+
+Without pixi:
+
+```bash
+parserologan sra_ids.txt profile.hmm --log_file progress.log
 ```

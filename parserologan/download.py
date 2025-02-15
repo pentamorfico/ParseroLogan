@@ -1,3 +1,4 @@
+# download.py
 import json
 import subprocess
 import threading
@@ -9,35 +10,18 @@ from .hmm_search import search_hmm_streaming
 from .output import save_results
 from .fasta import count_fasta_contigs
 
+# Create a global variable to hold the manager.
+global_manager = None
 
-def get_s3_object_size(sra_id: str) -> str:
-    bucket = "logan-pub"
-    key = f"c/{sra_id}/{sra_id}.contigs.fa.zst"
-    cmd = [
-        "aws",
-        "s3api",
-        "head-object",
-        "--bucket",
-        bucket,
-        "--key",
-        key,
-        "--no-sign-request"
-    ]
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        info = json.loads(result.stdout)
-        size_bytes = info["ContentLength"]
-        size_mb = size_bytes / (1024 * 1024)
-        return f"{size_mb:.2f} MB"
-    except Exception:
-        return "?"
+def set_manager(mgr):
+    """Set the global manager. This must be called once in the main process before spawning workers."""
+    global global_manager
+    global_manager = mgr
 
-
-def download_sra_to_variable(sra_id: str, updates: dict, done_event: threading.Event, hmm_file: Path, min_length: int, evalue: float, output_dir: Path, fix_circles_flag: bool = False, save_all: bool = False):
-    total_size = get_s3_object_size(sra_id)
-    updates[sra_id] = {
+def download_sra_to_variable(sra_id: str, updates: dict, done_event, hmm_file: Path, min_length: int, evalue: float, output_dir: Path, fix_circles_flag: bool = False, save_all: bool = False):
+    # Use the global manager to create a proxy dict for this SRA.
+    updates[sra_id] = global_manager.dict({
         "name": sra_id,
-        "total_size": total_size,
         "status": "Downloading...",
         "downloaded_symbol": "[yellow]?[/yellow]",
         "annotated_symbol": "",
@@ -46,11 +30,10 @@ def download_sra_to_variable(sra_id: str, updates: dict, done_event: threading.E
         "num_contigs": None,
         "num_proteins": None,
         "num_hits": None
-    }
-
+    })
     bucket_key = f"s3://logan-pub/c/{sra_id}/{sra_id}.contigs.fa.zst"
-    cmd = f"aws s3 cp {bucket_key} - --no-sign-request --no-progress | seqkit seq -m {min_length}"
-
+    cmd = f"cat /clusterfs/jgi/scratch/science/mds/pentamorfico/logan_search/ParseroLogan/test.fa | seqkit seq -m {min_length}"
+    #cmd = f"aws s3 cp {bucket_key} - --no-sign-request --no-progress | seqkit seq -m {min_length}"
     process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     try:

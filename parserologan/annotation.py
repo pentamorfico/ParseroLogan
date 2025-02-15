@@ -1,3 +1,4 @@
+# annotation.py
 from typing import List, Dict, Tuple
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord

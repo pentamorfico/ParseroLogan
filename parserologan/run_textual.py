@@ -1,18 +1,19 @@
+# run_textual.py
 import sys
 import asyncio
-import threading
+import multiprocessing
 from io import StringIO
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 from textual.app import App, ComposeResult
 from textual.widgets import DataTable, Header, Footer, Static, RichLog
 from textual.containers import Vertical
 from textual.reactive import reactive
-from .download import download_sra_to_variable
+from .download import download_sra_to_variable, set_manager
 
 def display_value(val):
     return str(val) if val is not None else ""
 
-def run_with_textual_interface(sra_ids, threads, hmm_file, min_length, evalue, output_dir, fix_circles,save_all=False):
+def run_with_textual_interface(sra_ids, threads, hmm_file, min_length, evalue, output_dir, fix_circles, save_all=False):
     class LoganParsero(App):
         CSS = """
         Screen {
@@ -21,11 +22,10 @@ def run_with_textual_interface(sra_ids, threads, hmm_file, min_length, evalue, o
         """
 
         sra_ids = []
-        updates = {}
+        updates = None
         done_events = []
         sra_to_row = {}
-        done_flag = threading.Event()
-        executor = ThreadPoolExecutor()
+        done_flag = multiprocessing.Event()
         completed = reactive(0)
 
         def __init__(self, sra_ids, threads, hmm_file, min_length, evalue, output_dir, fix_circles=False):
@@ -39,6 +39,10 @@ def run_with_textual_interface(sra_ids, threads, hmm_file, min_length, evalue, o
             self.fix_circles = fix_circles
             self.save_all = save_all
             self._stdout_buffer = StringIO()
+            self.manager = multiprocessing.Manager()
+            set_manager(self.manager)  # Set the global manager for download.py
+            self.updates = self.manager.dict()
+            self.executor = ProcessPoolExecutor(max_workers=self.threads)
 
         def compose(self) -> ComposeResult:
             yield Header()
@@ -55,7 +59,6 @@ def run_with_textual_interface(sra_ids, threads, hmm_file, min_length, evalue, o
 
             table = self.query_one("#table", DataTable)
             self.name_col = table.add_column("name", width=25)
-            self.size_col = table.add_column("initial size")
             self.status_col = table.add_column("status")
             self.downloaded_col = table.add_column("downloaded")
             self.annotated_col = table.add_column("annotated")
@@ -65,7 +68,7 @@ def run_with_textual_interface(sra_ids, threads, hmm_file, min_length, evalue, o
             self.hits_col = table.add_column("hits")
 
             for sra_id in self.sra_ids:
-                done_event = threading.Event()
+                done_event = self.manager.Event()
                 self.done_events.append(done_event)
                 self.executor.submit(
                     download_sra_to_variable,
@@ -96,7 +99,6 @@ def run_with_textual_interface(sra_ids, threads, hmm_file, min_length, evalue, o
                 if sra_id not in self.sra_to_row:
                     row_key = table.add_row(
                         data["name"],
-                        data["total_size"],
                         data["status"],
                         data["downloaded_symbol"],
                         data["annotated_symbol"],
@@ -109,7 +111,6 @@ def run_with_textual_interface(sra_ids, threads, hmm_file, min_length, evalue, o
                 else:
                     row_key = self.sra_to_row[sra_id]
                     table.update_cell(row_key, self.name_col, data["name"])
-                    table.update_cell(row_key, self.size_col, data["total_size"])
                     table.update_cell(row_key, self.status_col, data["status"])
                     table.update_cell(row_key, self.downloaded_col, data["downloaded_symbol"])
                     table.update_cell(row_key, self.annotated_col, data["annotated_symbol"])
