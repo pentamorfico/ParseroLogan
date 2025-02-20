@@ -1,11 +1,9 @@
 # run_log_file.py
-import time
 import multiprocessing
 from concurrent.futures import ProcessPoolExecutor
-from pathlib import Path
 import traceback
 
-from .download import download_sra_to_variable, set_manager
+from .process_sample import set_manager,process_sample
 
 def display_value(val):
     return str(val) if val is not None else ""
@@ -19,21 +17,22 @@ def convert_symbol(symbol):
         return "?"
     return symbol
 
-def handle_future_exception(future, sra_id, log_file, updates):
-    """
-    This callback is fired immediately when the future completes, either successfully or with an exception.
-    If there's an exception, we log it directly (without waiting for other processes to finish).
-    """
-    exc = future.exception()
+import traceback
+
+def handle_future_exception(future, sra_id, updates):
+
+    exc = future.exception()  # Retrieve any exception raised during the execution of the future.
     if exc is not None:
         updates[sra_id]["status"] = "Error"
         updates[sra_id]["downloaded_symbol"] = "[red]✗[/red]"
-        with open(log_file, "a") as lf:
-            lf.write(f"\nException in process for {sra_id}:\n")
-            traceback.print_exc(file=lf)
-        traceback.print_exc()
 
-def run_with_log_file(sra_ids, threads, hmm_file, min_length, evalue, output_dir, fix_circles, log_file, save_all):
+        # Log the type and message of the exception.
+        exc_type = type(exc).__name__
+        exc_message = str(exc)
+        print(f"Exception occurred for SRA ID {sra_id}: {exc_type} - {exc_message}")
+
+
+def run_with_log_file(sra_ids, threads, hmm_file, min_length, evalue, output_dir, log_file, save_all):
     manager = multiprocessing.Manager()
     set_manager(manager)  # Set the global manager for download.py
     updates = manager.dict()
@@ -44,7 +43,7 @@ def run_with_log_file(sra_ids, threads, hmm_file, min_length, evalue, output_dir
         done_event = manager.Event()
         done_events.append(done_event)
         future = executor.submit(
-            download_sra_to_variable,
+            process_sample,
             sra_id,
             updates,
             done_event,
@@ -52,11 +51,10 @@ def run_with_log_file(sra_ids, threads, hmm_file, min_length, evalue, output_dir
             min_length,
             evalue,
             output_dir,
-            fix_circles,
             save_all
         )
         future.add_done_callback(
-            lambda fut, sid=sra_id: handle_future_exception(fut, sid, log_file, updates)
+            lambda fut, sid=sra_id: handle_future_exception(fut, sid, updates)
         )
 
     headers = ["name", "initial size", "status", "downloaded", "annotated", "HMMsearched", "contigs", "proteins", "hits"]

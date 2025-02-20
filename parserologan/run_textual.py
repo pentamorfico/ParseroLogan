@@ -8,12 +8,12 @@ from textual.app import App, ComposeResult
 from textual.widgets import DataTable, Header, Footer, Static, RichLog
 from textual.containers import Vertical
 from textual.reactive import reactive
-from .download import download_sra_to_variable, set_manager
+from .process_sample import set_manager,process_sample
 
 def display_value(val):
     return str(val) if val is not None else ""
 
-def run_with_textual_interface(sra_ids, threads, hmm_file, min_length, evalue, output_dir, fix_circles, save_all=False):
+def run_with_textual_interface(sra_ids, threads, hmm_file, min_length, evalue, output_dir, save_all=False):
     class LoganParsero(App):
         CSS = """
         Screen {
@@ -28,7 +28,7 @@ def run_with_textual_interface(sra_ids, threads, hmm_file, min_length, evalue, o
         done_flag = multiprocessing.Event()
         completed = reactive(0)
 
-        def __init__(self, sra_ids, threads, hmm_file, min_length, evalue, output_dir, fix_circles=False):
+        def __init__(self, sra_ids, threads, hmm_file, min_length, evalue, output_dir):
             super().__init__()
             self.sra_ids = sra_ids
             self.threads = threads
@@ -36,7 +36,6 @@ def run_with_textual_interface(sra_ids, threads, hmm_file, min_length, evalue, o
             self.min_length = min_length
             self.evalue = evalue
             self.output_dir = output_dir
-            self.fix_circles = fix_circles
             self.save_all = save_all
             self._stdout_buffer = StringIO()
             self.manager = multiprocessing.Manager()
@@ -71,7 +70,7 @@ def run_with_textual_interface(sra_ids, threads, hmm_file, min_length, evalue, o
                 done_event = self.manager.Event()
                 self.done_events.append(done_event)
                 self.executor.submit(
-                    download_sra_to_variable,
+                    process_sample,
                     sra_id,
                     self.updates,
                     done_event,
@@ -79,7 +78,6 @@ def run_with_textual_interface(sra_ids, threads, hmm_file, min_length, evalue, o
                     self.min_length,
                     self.evalue,
                     self.output_dir,
-                    self.fix_circles,
                     self.save_all
                 )
 
@@ -157,4 +155,4 @@ def run_with_textual_interface(sra_ids, threads, hmm_file, min_length, evalue, o
 
             await self.action_quit()
 
-    LoganParsero(sra_ids, threads, hmm_file, min_length, evalue, output_dir, fix_circles).run()
+    LoganParsero(sra_ids, threads, hmm_file, min_length, evalue, output_dir).run()

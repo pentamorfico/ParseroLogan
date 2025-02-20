@@ -1,33 +1,42 @@
 # annotation.py
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Iterator
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 import pyrodigal_gv
 import pyhmmer
+from io import BytesIO, TextIOWrapper
 
-from .fasta import stream_fasta_from_memory
+def filter_fasta(data: bytes, min_length: int, sra_id: str = "") -> Iterator[SeqRecord]:
+    text_stream = TextIOWrapper(BytesIO(data))
+    current_header = ""
+    current_seq = []
 
+    def yield_contig():
+        seq = ''.join(current_seq)
+        if len(seq) >= min_length:
+            seq_id = current_header[1:].split()[0]
+            description = current_header[1:]
+            if seq_id.startswith("_") and sra_id:
+                seq_id = f"{sra_id}{seq_id}"
+                description = f"{sra_id}{current_header[1:]}"
+            return SeqRecord(Seq(seq), id=seq_id, description=description)
+        return None
 
-def has_dtr(seq_record: SeqRecord, min_length: int = 30):
-    substring = str(seq_record.seq).lower()[:min_length]
-    pos = str(seq_record.seq).lower().rfind(substring)
-    if pos < len(seq_record.seq) / 2:
-        return False, 0
-    substring = str(seq_record.seq).lower()[pos:]
-    return str(seq_record.seq).lower()[: len(substring)] == substring, len(substring)
-
-
-def fix_circle(seq_record: SeqRecord, k: int = 31):
-    seq = str(seq_record.seq)
-    kmers = set()
-    for i in range(len(seq) - k + 1):
-        kmer = seq[i : i + k]
-        if kmer in kmers:
-            new_seq = seq[: i + k - 1]
-            return SeqRecord(Seq(new_seq), id=seq_record.id, description=seq_record.description)
-        kmers.add(kmer)
-    return seq_record
-
+    for line in text_stream:
+        line = line.strip()
+        if line.startswith('>'):
+            if current_seq:
+                contig = yield_contig()
+                if contig:
+                    yield contig
+            current_header = line
+            current_seq = []
+        else:
+            current_seq.append(line)
+    if current_seq:
+        contig = yield_contig()
+        if contig:
+            yield contig
 
 def process_contig(seq_record: SeqRecord) -> Tuple[List[Dict], List[SeqRecord], List[pyhmmer.easel.TextSequence]]:
     annotations = []
@@ -69,18 +78,13 @@ def process_contig(seq_record: SeqRecord) -> Tuple[List[Dict], List[SeqRecord], 
 
     return annotations, proteins, hmmer_sequences
 
-
-def process_annotations(data: bytes, min_length: int, sra_id: str, fix_circles_flag: bool = False):
+def process_annotations(data: bytes, min_length: int, sra_id: str):
     all_contigs = {}
     all_annotations = []
     all_proteins = []
     all_hmmer_sequences = []
 
-    for contig in stream_fasta_from_memory(data, min_length, sra_id):
-        dtr_check, _ = has_dtr(contig)
-        if fix_circles_flag and dtr_check:
-            contig = fix_circle(contig)
-
+    for contig in filter_fasta(data, min_length, sra_id):
         annotations, proteins, hmmer_sequences = process_contig(contig)
         all_contigs[contig.id] = contig
         all_annotations.extend(annotations)
